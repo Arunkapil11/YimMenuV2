@@ -5,6 +5,9 @@ on: [ push, pull_request ]
 
 jobs:
   ci:
+    strategy:
+      matrix:
+        release-type: [Debug, Release, RelWithDebInfo, MinSizeRel]
     runs-on: [ windows-latest ]
     name: CI
     steps:
@@ -19,22 +22,16 @@ jobs:
           arch: amd64
 
       - name: Generate CMake project
-        run: cmake -D CMAKE_BUILD_TYPE=Release -S. -Bbuild -G Ninja
+        run: cmake -D CMAKE_BUILD_TYPE=${{ matrix.release-type }} -D OPTIMIZE=YES -S. -Bbuild -G Ninja
 
-      - name: Build 64bit release DLL
-        run: cmake --build ./build --config Release --target YimMenuV2 --
+      - name: Build 64bit ${{ matrix.release-type }} DLL
+        run: cmake --build ./build --config ${{ matrix.release-type }} --target YimMenuV2 --
 
       - name: Check if DLL got built
         run: if (-Not (Test-Path -path "build/YimMenuV2.dll")) {throw 1}
 
-      - name: Rename DLL to YimMenuV2-dev-{GITHUB_SHA}.dll
-        run: |
-          del YimMenuV2-dev-*.dll
-          ren YimMenuV2.dll YimMenuV2-dev-${{github.sha}}.dll
-        working-directory: build/
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary
-          path: build/YimMenuV2-dev-*.dll
+          name: ${{ matrix.release-type }}
+          path: build/YimMenuV2.dll
